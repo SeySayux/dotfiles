@@ -9,6 +9,8 @@ copy() {
     else
         to="$2"
     fi
+
+    rm -rf "$HOME/$to"
     cp -frv "$from" "$HOME/$to"
 }
 
@@ -19,10 +21,8 @@ symlink() {
     else
         to="$2"
     fi
-    if [ -d "$HOME/$to" ]; then
-        rm "$HOME/$to"
-    fi
 
+    rm "$HOME/$to"
     ln -Fsv "$from" "$HOME/$to"
 }
 
