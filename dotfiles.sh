@@ -62,6 +62,12 @@ dotfiles_update() {
     fi
 }
 
+dotfiles_push() {
+    pushd $DIR > /dev/null
+    git commit -a -m 'Submodules update'
+    git push
+    popd $DIR > /dev/null
+}
 
 case $1 in
 init|--init)
@@ -69,6 +75,9 @@ init|--init)
     ;;
 update|--update)
     dotfiles_update
+    ;;
+push|--push)
+    dotfiles_push
     ;;
 *)
     echo "Usage: $0 <init|update>" >&2
