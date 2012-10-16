@@ -1,6 +1,6 @@
 [submodule "vimrc"]
 	path = vimrc
-	url = https//:github.com/SeySayux/vimrc.git
+	url = https://github.com/SeySayux/vimrc.git
 [submodule "zshrc"]
 	path = zshrc
-	url = https//:github.com/SeySayux/zshrc.git
+	url = https://github.com/SeySayux/zshrc.git
