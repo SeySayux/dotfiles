@@ -43,8 +43,8 @@ dotfiles_init() {
     pushd $DIR > /dev/null
     git submodule update --recursive --init
     git submodule foreach --recursive git checkout master
-    source_config
     popd > /dev/null
+    source_config
 }
 
 dotfiles_update() {
