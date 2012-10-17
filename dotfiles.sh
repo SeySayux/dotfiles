@@ -31,12 +31,18 @@ loadconf() {
     source "$REPO/config.sh"
 }
 
+save_last_update() {
+    date '+%s' > "$DIR/.last_update"
+}
+
 source_config() {
     if [ -f "$DIR/config-local.sh" ]; then
         source "$DIR/config-local.sh"
     else
         source "$DIR/config.sh"
     fi
+
+    save_last_update
 }
 
 dotfiles_init() {
