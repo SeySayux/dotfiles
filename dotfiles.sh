@@ -55,6 +55,14 @@ dotfiles_init() {
 
 dotfiles_update() {
     pushd $DIR > /dev/null
+    git pull
+    git submodule update
+    source_config
+    popd > /dev/null
+}
+
+dotfiles_upgrade() {
+    pushd $DIR > /dev/null
     output=`git submodule foreach --recursive git pull origin master 2>&1 | \
         grep -v '^From' | grep -v "FETCH_HEAD" | grep -v '^Entering' | \
         grep -v "up-to-date\.$"`
@@ -82,11 +90,14 @@ init|--init)
 update|--update)
     dotfiles_update
     ;;
+upgrade|--upgrade)
+    dotfiles_upgrade
+    ;;
 push|--push)
     dotfiles_push
     ;;
 *)
-    echo "Usage: $0 <init|update>" >&2
+    echo "Usage: $0 <init|update|upgrade>" >&2
     ;;
 esac
 
