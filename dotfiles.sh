@@ -1,102 +1,135 @@
 #!/bin/bash
 
-DIR=`dirname $0`
+DIR=`dirname $PWD/$0`
 
-copy() {
-    from="$1"
-    if [ -z "$2" ]; then
-        to="$1"
-    else
-        to="$2"
-    fi
-
-    rm -rf "$HOME/$to"
-    cp -frv "$from" "$HOME/$to"
+WINDOWS() {
+    uname -s | egrep -iq '(Cygwin|MinGW)'
 }
 
-symlink() {
-    from="$1"
-    if [ -z "$2" ]; then
-        to="$1"
-    else
-        to="$2"
-    fi
-
-    rm "$HOME/$to"
-    ln -Fsv "$from" "$HOME/$to"
+MACOS() {
+    [ $(uname -s) = 'Darwin' ]
 }
 
-loadconf() {
-    REPO="$DIR/$1"
-    source "$REPO/config.sh"
+LINUX() {
+    [ $(uname -s) = 'Linux' ]
+}
+
+fetch_repo() {
+    pushd $DIR > /dev/null
+
+    loc=$1
+    remote=$(grep " $loc$" repos.conf | awk '{ print $1 }')
+
+    cd repos
+
+    if [ ! -e $loc ]; then
+        echo "Cloning $remote into $loc..." >&2
+        git clone --recursive --quiet "$remote" "$loc"
+    fi
+
+    popd > /dev/null
+}
+
+require() {
+    repo=$1
+
+    if [ -d $DIR/repos/$repo ]; then
+        echo "Skipping $1..." >&2
+        return
+    fi
+
+    fetch_repo $repo
+
+    echo "Setting up $1..." >&2
+
+    pushd $DIR/repos > /dev/null
+
+    cd $repo
+
+    if [ ! -f dotfiles_config.sh ]; then
+        echo -n "No dotfiles_config.sh found for repo $repo, " >&2
+        echo "linking to ~/.$repo" >&2
+
+        if [ ! -e "$HOME/.$repo" ]; then
+            ln -sv "$PWD" "$HOME/.$repo"
+        else
+            echo "$HOME/.$repo: File exists" >&2
+        fi
+    else 
+        source dotfiles_config.sh
+
+        for file in ${INCLUDE[*]}; do
+            src=$(awk -F: '{ print $1 }' <<< $file)
+            tgt=$(awk -F: '{ print $2 }' <<< $file)
+
+            if [ -z "$tgt" ]; then
+                tgt="$src"
+            fi
+
+            # TODO: Copy on windows?
+            if [ ! -e "$HOME/$tgt" ]; then
+                ln -sv "$PWD/$src" "$HOME/$tgt"
+            else
+                echo "$HOME/$tgt: File exists" >&2
+            fi
+        done
+    fi
+
+    popd > /dev/null
 }
 
 save_last_update() {
     date '+%s' > "$DIR/.last_update"
 }
 
-source_config() {
-    if [ -f "$DIR/config-local.sh" ]; then
-        source "$DIR/config-local.sh"
-    else
-        source "$DIR/config.sh"
+all_repos() {
+    pushd $DIR > /dev/null
+
+    repos=$(cat repos.conf)
+
+    local IFS=$'\n'
+    for repo in $repos; do
+        awk '{ print $2 }' <<< $repo
+    done
+
+    popd > /dev/null
+}
+
+dotfiles_install() {
+    mkdir -p $DIR/repos
+
+    pushd $DIR/repos > /dev/null
+
+    repos="$@"
+
+    if [ -z "$@" ]; then
+        repos=$(all_repos)
     fi
+
+    for repo in $repos; do
+        require $repo
+    done
+
+    popd > /dev/null
 
     save_last_update
 }
 
-dotfiles_init() {
-    pushd $DIR > /dev/null
-    git submodule update --recursive --init
-    popd > /dev/null
-    source_config
-}
-
-dotfiles_update() {
-    pushd $DIR > /dev/null
-    git pull
-    git submodule update
-    source_config
-    popd > /dev/null
-}
-
-dotfiles_upgrade() {
-    pushd $DIR > /dev/null
-    output=`git submodule foreach --recursive git pull origin master 2>&1 | \
-        grep -v '^From' | grep -v "FETCH_HEAD" | grep -v '^Entering' | \
-        grep -v "up-to-date\.$"`
-    if [ -n "$output" ]; then
-        echo "$output";
-        git submodule foreach --recursive git checkout master 2>&1 > /dev/null
-        popd > /dev/null
-        source_config
-    else
-        echo "Everything up-to-date."
-    fi
-}
-
-dotfiles_push() {
-    pushd $DIR > /dev/null
-    git commit -a -m 'Submodules update'
-    git push
-    popd $DIR > /dev/null
-}
-
 case $1 in
-init|--init)
-    dotfiles_init
+install|--install)
+    shift
+    dotfiles_install "$@"
+    ;;
+status|--status)
+    shift
+    # TODO
     ;;
 update|--update)
-    dotfiles_update
-    ;;
-upgrade|--upgrade)
-    dotfiles_upgrade
-    ;;
-push|--push)
-    dotfiles_push
+    shift
+    # TODO
     ;;
 *)
-    echo "Usage: $0 <init|update|upgrade>" >&2
+    echo "Usage: $0 install [...]" >&2
     ;;
 esac
 
